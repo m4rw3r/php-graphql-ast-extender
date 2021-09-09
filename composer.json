@@ -1,0 +1,31 @@
+{
+    "name": "m4rw3r/graphql-ast-extender",
+    "description": "AST-based extender for webonyx/graphql-php",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Martin Wernstål",
+            "email": "m4rw3r@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "GraphQLASTExtender\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "GraphQLASTExtender\\": "tests/"
+        }
+    },
+    "require": {
+        "webonyx/graphql-php": "^14.9"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "vimeo/psalm": "^4.9",
+        "psalm/plugin-phpunit": "^0.16.0",
+        "spatie/phpunit-snapshot-assertions": "^4.2"
+    }
+}
