@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace M4rw3r\GraphQLASTExtender;
+namespace GraphQLASTExtender;
 
 use GraphQL\Language\Parser;
 use GraphQL\Language\AST\DocumentNode;
