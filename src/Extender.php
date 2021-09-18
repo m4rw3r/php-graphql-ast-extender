@@ -29,14 +29,11 @@ use GraphQL\Language\Visitor;
 use RuntimeException;
 
 /**
- * @psalm-import-type TypeDefinitionImpls from Util
- * @psalm-import-type TypeExtensionImpls from Util
+ * @psalm-type TypeExtensionImpls ScalarTypeExtensionNode | ObjectTypeExtensionNode | InterfaceTypeExtensionNode | UnionTypeExtensionNode | EnumTypeExtensionNode | InputObjectTypeExtensionNode
+ * @psalm-type TypeDefinitionImpls ScalarTypeDefinitionNode | ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode | UnionTypeDefinitionNode | EnumTypeDefinitionNode | InputObjectTypeDefinitionNode
+ * @psalm-type TypeSystemDefinitionImpls SchemaDefinitionNode | TypeDefinitionImpls | TypeExtensionImpls | DirectiveDefinitionNode
  */
 class Extender {
-    public function __construct(DocumentNode $initialAST) {
-
-    }
-
     /**
      * @param TypeDefinitionImpls $base
      * @param TypeExtensionImpls $extension
@@ -57,18 +54,20 @@ class Extender {
     }
 
     /**
-     * @param ObjectTypeDefinitionNode|InterfaceTypeDefinitionNode $base
+     * @template T of ObjectTypeDefinitionNode|InterfaceTypeDefinitionNode
+     *
+     * @param T $base
      * @param ObjectTypeExtensionNode|InterfaceTypeExtensionNode $extension
-     * @reutrn ObjectTypeDefinitionNode|InterfaceTypeDefinitionNode
+     * @return T
      */
-    public static function extendObjectType(
+    public static function extendObjectInterfaces(
         TypeDefinitionNode $base,
         TypeExtensionNode $extension
     ): TypeDefinitionNode {
         if($extension->interfaces->count() > 0) {
             $base = clone $base;
 
-            // TODO: No duplicates allowed
+            // Duplicates are handled by GraphQL validation since it is a list
             /**
              * Bad type on InterfaceTypeExtensionNode::$interfaces.
              *
@@ -77,62 +76,168 @@ class Extender {
             $base->interfaces = $base->interfaces->merge($extension->interfaces);
         }
 
+        return $base;
+    }
+
+    /**
+     * @template T of ObjectTypeDefinitionNode|InterfaceTypeDefinitionNode
+     *
+     * @param T $base
+     * @param ObjectTypeExtensionNode|InterfaceTypeExtensionNode $extension
+     * @return T
+     */
+    public static function extendObjectFields(
+        TypeDefinitionNode $base,
+        TypeExtensionNode $extension
+    ): TypeDefinitionNode {
         if($extension->fields->count() > 0) {
             $base = clone $base;
 
-            // TODO: No duplicates allowed
+            // Duplicates are handled by GraphQL validation since it is a list
             $base->fields = $base->fields->merge($extension->fields);
         }
 
         return $base;
     }
 
-    public static function extend(DocumentNode $initial, DocumentNode $extension): DocumentNode {
-        // TODO: Code
-        // TODO: Additional values to merge?
-        // TODO: Throw on duplicates
-        // TODO: Throw on missing types when extending
-        // TODO: How to extend unions?
+    /**
+     * @template T of ObjectTypeDefinitionNode|InterfaceTypeDefinitionNode
+     *
+     * @param T $base
+     * @param ObjectTypeExtensionNode|InterfaceTypeExtensionNode $extension
+     * @return T
+     */
+    public static function extendObjectType(
+        TypeDefinitionNode $base,
+        TypeExtensionNode $extension
+    ): TypeDefinitionNode {
+        return self::extendObjectFields(self::extendObjectInterfaces($base, $extension), $extension);
+    }
 
-        // SchemaDefinitionNode ?
+    public static function extendUnionType(
+        UnionTypeDefinitionNode $base,
+        UnionTypeExtensionNode $extension
+    ): UnionTypeDefinitionNode {
+        if($extension->types->count() > 0) {
+            $base = clone $base;
 
-        $context = new Context();
+            $base->types = $base->types->merge($extension->types);
+        }
 
-        $collectType = static function(Node $typeDef) use($context): void {
-            $context->addType($typeDef);
-        };
+        return $base;
+    }
 
-        Visitor::visit($extension, [
-            // TODO: Do we just ignore these?
-            // ExecutableDefinitionNode
-            // OperationDefinitionNode
-            // FragmentDefinitionNode
+    public static function extendEnumType(
+        EnumTypeDefinitionNode $base,
+        EnumTypeExtensionNode $extension
+    ): EnumTypeDefinitionNode {
+        if($extension->values->count() > 0) {
+            $base = clone $base;
 
-            // Skip the schema?
-            NodeKind::SCHEMA_DEFINITION => $collectType,
-            NodeKind::DIRECTIVE_DEFINITION => $collectType,
-            // TypeExtensionNode
-            NodeKind::SCALAR_TYPE_EXTENSION => $collectType,
-            NodeKind::OBJECT_TYPE_EXTENSION => $collectType,
-            NodeKind::INTERFACE_TYPE_EXTENSION => $collectType,
-            NodeKind::UNION_TYPE_EXTENSION => $collectType,
-            NodeKind::ENUM_TYPE_EXTENSION => $collectType,
-            NodeKind::INPUT_OBJECT_TYPE_EXTENSION => $collectType,
-            // Type definitions
-            NodeKind::SCALAR_TYPE_DEFINITION => $collectType,
-            NodeKind::OBJECT_TYPE_DEFINITION => $collectType,
-            NodeKind::INTERFACE_TYPE_DEFINITION => $collectType,
-            NodeKind::UNION_TYPE_DEFINITION => $collectType,
-            NodeKind::ENUM_TYPE_DEFINITION => $collectType,
-            NodeKind::INPUT_OBJECT_TYPE_DEFINITION => $collectType,
-        ]);
+            $base->values = $base->values->merge($extension->values);
+        }
 
-        $checkType =
-            /**
-             * @param TypeDefinitionImpls $node
-             */
-            static function(Node $node) use($context): void {
-                if($context->hasType($node->name->value)) {
+        return $base;
+    }
+
+    // Special for input object types
+    public static function extendInputObjectType(
+        InputObjectTypeDefinitionNode $base,
+        InputObjectTypeExtensionNode $extension
+    ): InputObjectTypeDefinitionNode {
+        if($extension->fields->count() > 0) {
+            $base = clone $base;
+
+            // Duplicates are handled by GraphQL validation since it is a list
+            $base->fields = $base->fields->merge($extension->fields);
+        }
+
+        return $base;
+    }
+
+    /**
+     * @param TypeDefinitionImpls $node
+     */
+    public static function extendType(
+        TypeDefinitionNode $node,
+        Extension $schemaExtension
+    ): ?TypeDefinitionNode {
+        $name = $node->name->value;
+        $extension = $schemaExtension->getTypeExtension($name);
+
+        if( ! $extension) {
+            return null;
+        }
+
+        // Common code
+        $newNode = self::extendDirectives($node, $extension);
+
+        /**
+         * We have an else just in case.
+         *
+         * @psalm-suppress RedundantConditionGivenDocblockType
+         */
+        if($newNode instanceof ScalarTypeDefinitionNode) {
+            // TODO: Better error
+            assert($extension instanceof ScalarTypeExtensionNode);
+
+            // Do nothing, we only add directives to scalars
+        }
+        elseif($newNode instanceof ObjectTypeDefinitionNode) {
+            // TODO: Better error
+            assert($extension instanceof ObjectTypeExtensionNode);
+
+            $newNode = self::extendObjectType($newNode, $extension);
+        }
+        elseif($newNode instanceof InterfaceTypeDefinitionNode) {
+            // TODO: Better error
+            assert($extension instanceof InterfaceTypeExtensionNode);
+
+            $newNode = self::extendObjectType($newNode, $extension);
+        }
+        elseif($newNode instanceof UnionTypeDefinitionNode) {
+            // TODO: Better error
+            assert($extension instanceof UnionTypeExtensionNode);
+
+            $newNode = self::extendUnionType($newNode, $extension);
+        }
+        elseif($newNode instanceof EnumTypeDefinitionNode) {
+            // TODO: Better error
+            assert($extension instanceof EnumTypeExtensionNode);
+
+            $newNode = self::extendEnumType($newNode, $extension);
+        }
+        elseif($newNode instanceof InputObjectTypeDefinitionNode) {
+            // TODO: Better error
+            assert($extension instanceof InputObjectTypeExtensionNode);
+
+            $newNode = self::extendInputObjectType($newNode, $extension);
+        }
+        else {
+            throw new RuntimeException(sprintf(
+                "%s: Unknown schema definition node type %s",
+                __METHOD__,
+                $newNode::class
+            ));
+        }
+
+        $schemaExtension->setUsedExtension($name);
+
+        return $newNode !== $node ? $newNode : null;
+    }
+
+    public static function extend(
+        DocumentNode $base,
+        DocumentNode $extension
+    ): DocumentNode {
+        $schemaExtension = new Extension($extension);
+
+        $checkType = static function(Node $node)
+            use($schemaExtension): void {
+                /**
+                 * @var TypeDefinitionImpls $node
+                 */
+                if($schemaExtension->hasType($node->name->value)) {
                     throw new RuntimeException(sprintf(
                         "%s: Duplicate type definition '%s'",
                         __CLASS__,
@@ -141,55 +246,32 @@ class Extender {
                 }
             };
 
-        $extendType =
-            static function(TypeDefinitionNode $node) use($context): ?TypeDefinitionNode {
-                assert(Util::isTypeDefinition($node));
-
-                $name = $node->name->value;
-                $extension = $context->getTypeExtension($name);
-
-                if( ! $extension) {
-                    return null;
-                }
-
-                $newNode = self::extendDirectives($node, $extension);
-
-                if($newNode instanceof ScalarTypeDefinitionNode) {
-                    // TODO: Better error
-                    assert($extension instanceof ScalarTypeExtensionNode);
-                }
-
-                if($newNode instanceof ObjectTypeDefinitionNode) {
-                    // TODO: Better error
-                    assert($extension instanceof ObjectTypeExtensionNode);
-
-                    $newNode = self::extendObjectType($newNode, $extension);
-                }
-
-                if($newNode instanceof ObjectTypeDefinitionNode) {
-                    // TODO: Better error
-                    assert($extension instanceof ObjectTypeExtensionNode);
-
-                    $newNode = self::extendObjectType($newNode, $extension);
-                }
-
-                if($newNode instanceof InterfaceTypeDefinitionNode) {
-                    // TODO: Better error
-                    assert($extension instanceof InterfaceTypeExtensionNode);
-
-                    $newNode = self::extendObjectType($newNode, $extension);
-                }
-
-                // TODO: Union extension
-                // TODO: Enum extension
-
-                $context->setUsedExtension($name);
-
-                return $newNode !== $node ? $newNode : null;
+        $extendType = static function(TypeDefinitionNode $node)
+            use($schemaExtension): ?TypeDefinitionNode {
+                /**
+                 * @var TypeDefinitionImpls $node
+                 */
+                return self::extendType($node, $schemaExtension);
             };
 
-        // TODO: Keep track of used extension nodes
-        Visitor::visit($initial, [
+        $extendDocument = static function(DocumentNode $doc) use($schemaExtension): ?DocumentNode {
+            $addDefs = $schemaExtension->getAdditionalDefinitions();
+            $newDoc = $doc;
+
+            if(count($addDefs) > 0) {
+                $newDoc = clone $newDoc;
+
+                $newDoc->definitions = $newDoc->definitions->merge($addDefs);
+            }
+
+            return $newDoc !== $doc ? $newDoc : null;
+        };
+
+        /**
+         * @psalm-suppress InvalidArgument
+         * @var DocumentNode
+         */
+        $base = Visitor::visit($base, [
             "enter" => [
                 NodeKind::SCALAR_TYPE_DEFINITION => $checkType,
                 NodeKind::OBJECT_TYPE_DEFINITION => $checkType,
@@ -199,9 +281,7 @@ class Extender {
                 NodeKind::INPUT_OBJECT_TYPE_DEFINITION => $checkType,
             ],
             "leave" => [
-                NodeKind::DOCUMENT => static function() use($context) {
-
-                },
+                NodeKind::DOCUMENT => $extendDocument,
                 NodeKind::SCALAR_TYPE_DEFINITION => $extendType,
                 NodeKind::OBJECT_TYPE_DEFINITION => $extendType,
                 NodeKind::INTERFACE_TYPE_DEFINITION => $extendType,
@@ -211,6 +291,15 @@ class Extender {
             ],
         ]);
 
-        return $initial;
+        if($schemaExtension->hasUnusedExtensions()) {
+            throw new RuntimeException(sprintf(
+                "%s: Missing base-types for type-extensions to %s",
+                implode(", ", array_map(function(string $s): string {
+                    return sprintf("'%s'", $s);
+                }, $schemaExtension->getUnusedExtensionNames())),
+            ));
+        }
+
+        return $base;
     }
 }
