@@ -294,6 +294,7 @@ class Extender {
         if($schemaExtension->hasUnusedExtensions()) {
             throw new RuntimeException(sprintf(
                 "%s: Missing base-types for type-extensions to %s",
+                __METHOD__,
                 implode(", ", array_map(function(string $s): string {
                     return sprintf("'%s'", $s);
                 }, $schemaExtension->getUnusedExtensionNames())),
