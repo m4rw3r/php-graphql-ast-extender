@@ -238,11 +238,7 @@ class Extender {
                  * @var TypeDefinitionImpls $node
                  */
                 if($schemaExtension->hasType($node->name->value)) {
-                    throw new RuntimeException(sprintf(
-                        "%s: Duplicate type definition '%s'",
-                        __CLASS__,
-                        $node->name->value
-                    ));
+                    throw new DuplicateTypeException($node->name->value);
                 }
             };
 
@@ -292,13 +288,7 @@ class Extender {
         ]);
 
         if($schemaExtension->hasUnusedExtensions()) {
-            throw new RuntimeException(sprintf(
-                "%s: Missing base-types for type-extensions to %s",
-                __METHOD__,
-                implode(", ", array_map(function(string $s): string {
-                    return sprintf("'%s'", $s);
-                }, $schemaExtension->getUnusedExtensionNames())),
-            ));
+            throw new MissingBaseTypeException($schemaExtension->getUnusedExtensionNames());
         }
 
         return $base;

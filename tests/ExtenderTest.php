@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace GraphQLASTExtender;
 
+use GraphQL\Error\Error;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\NodeList;
 use GraphQL\Language\Parser;
 use GraphQL\Language\Printer;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 class ExtenderText extends TestCase {
     public function testEmpty(): void {
@@ -57,7 +57,7 @@ class ExtenderText extends TestCase {
 
     public function testDuplicateType(): void {
         $this->expectExceptionMessage("Duplicate type definition 'Query'");
-        $this->expectException(RuntimeException::class);
+        $this->expectException(DuplicateTypeException::class);
 
         $base = Parser::parse("type Query { foo: String }");
         $extension = Parser::parse("type Query { foo: String }");
@@ -66,8 +66,8 @@ class ExtenderText extends TestCase {
     }
 
     public function testUnusedExtension(): void {
-        $this->expectExceptionMessage("GraphQLASTExtender\Extender::extend: Missing base-types for type-extensions to 'Query'");
-        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Missing base-type for type-extensions to 'Query'");
+        $this->expectException(MissingBaseTypeException::class);
 
         $base = new DocumentNode([
             "definitions" => new NodeList([]),
