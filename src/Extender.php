@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace GraphQLASTExtender;
 
+use GraphQL\Error\Error;
 use GraphQL\Language\AST\DirectiveDefinitionNode;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\EnumTypeDefinitionNode;
@@ -26,6 +27,10 @@ use GraphQL\Language\AST\TypeSystemDefinitionNode;
 use GraphQL\Language\AST\UnionTypeDefinitionNode;
 use GraphQL\Language\AST\UnionTypeExtensionNode;
 use GraphQL\Language\Visitor;
+use GraphQL\Type\Schema;
+use GraphQL\Util\BuildSchema;
+use GraphQL\Validator\DocumentValidator;
+use GraphQL\Validator\Rules\ValidationRule;
 use RuntimeException;
 
 /**
@@ -39,7 +44,7 @@ class Extender {
      * @param TypeExtensionImpls $extension
      * @return TypeDefinitionImpls
      */
-    public static function extendDirectives(
+    private static function extendDirectives(
         TypeDefinitionNode $base,
         TypeExtensionNode $extension
     ): TypeDefinitionNode {
@@ -60,7 +65,7 @@ class Extender {
      * @param ObjectTypeExtensionNode|InterfaceTypeExtensionNode $extension
      * @return T
      */
-    public static function extendObjectInterfaces(
+    private static function extendObjectInterfaces(
         TypeDefinitionNode $base,
         TypeExtensionNode $extension
     ): TypeDefinitionNode {
@@ -86,7 +91,7 @@ class Extender {
      * @param ObjectTypeExtensionNode|InterfaceTypeExtensionNode $extension
      * @return T
      */
-    public static function extendObjectFields(
+    private static function extendObjectFields(
         TypeDefinitionNode $base,
         TypeExtensionNode $extension
     ): TypeDefinitionNode {
@@ -107,14 +112,14 @@ class Extender {
      * @param ObjectTypeExtensionNode|InterfaceTypeExtensionNode $extension
      * @return T
      */
-    public static function extendObjectType(
+    private static function extendObjectType(
         TypeDefinitionNode $base,
         TypeExtensionNode $extension
     ): TypeDefinitionNode {
         return self::extendObjectFields(self::extendObjectInterfaces($base, $extension), $extension);
     }
 
-    public static function extendUnionType(
+    private static function extendUnionType(
         UnionTypeDefinitionNode $base,
         UnionTypeExtensionNode $extension
     ): UnionTypeDefinitionNode {
@@ -127,7 +132,7 @@ class Extender {
         return $base;
     }
 
-    public static function extendEnumType(
+    private static function extendEnumType(
         EnumTypeDefinitionNode $base,
         EnumTypeExtensionNode $extension
     ): EnumTypeDefinitionNode {
@@ -141,7 +146,7 @@ class Extender {
     }
 
     // Special for input object types
-    public static function extendInputObjectType(
+    private static function extendInputObjectType(
         InputObjectTypeDefinitionNode $base,
         InputObjectTypeExtensionNode $extension
     ): InputObjectTypeDefinitionNode {
@@ -158,7 +163,7 @@ class Extender {
     /**
      * @param TypeDefinitionImpls $node
      */
-    public static function extendType(
+    private static function extendType(
         TypeDefinitionNode $node,
         Extension $schemaExtension
     ): ?TypeDefinitionNode {
@@ -226,7 +231,7 @@ class Extender {
         return $newNode !== $node ? $newNode : null;
     }
 
-    public static function extend(
+    public static function extendDocument(
         DocumentNode $base,
         DocumentNode $extension
     ): DocumentNode {
@@ -292,5 +297,40 @@ class Extender {
         }
 
         return $base;
+    }
+
+    /**
+     * @param array{assumeValid?:bool} $options
+     */
+    public static function extend(
+        DocumentNode $base,
+        DocumentNode $extension,
+        array $options = []
+    ): DocumentNode {
+        $newBase = self::extendDocument($base, $extension);
+
+        if($newBase !== $base && ! ($options["assumeValid"] ?? false)) {
+            // If nothing changed we have nothing to validate
+
+            // TODO: Break out validation logic
+
+            // We have to add a rule for duplicate object fields since that
+            // is not currently included in the GraphQL library.
+            /**
+             * @var Array<ValidationRule>
+             */
+            $sdlRules = DocumentValidator::sdlRules();
+
+            $sdlRules[] = new Rules\UniqueFieldNames();
+
+            $errors = DocumentValidator::validateSDL($newBase, null, $sdlRules);
+
+            if(count($errors) > 0) {
+                // Replicates the private method DocumentValidator::combineErrorMessages
+                throw new Error(implode("\n\n", array_map(fn(Error $e): string => $e->getMessage(), $errors)));
+            }
+        }
+
+        return $newBase;
     }
 }

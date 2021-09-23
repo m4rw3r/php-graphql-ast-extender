@@ -78,16 +78,72 @@ class ExtenderText extends TestCase {
     }
 
     public function testObjectFieldCollision(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Field \"Query.foo\" can only be defined once.");
         $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query { foo: String }", [ "noLocation" => true ]);
 
         $extended = Extender::extend($base, $extension);
 
         $this->assertNotSame($base, $extended);
-        // This will fail validation:
         $this->assertSame("type Query {
   foo: Int
   foo: String
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testObjectFieldCollisionAssumeValid(): void {
+        $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query { foo: String }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+  foo: String
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testDirective(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("The directive \"myDirective\" can only be used once at this location.");
+
+        $base = Parser::parse("directive @myDirective on OBJECT
+type Query @myDirective { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @myDirective", [ "noLocation" => true ]);
+
+        Extender::extend($base, $extension);
+    }
+
+    public function testDirectiveAssumeValid(): void {
+        $base = Parser::parse("directive @myDirective(value: String) on OBJECT
+type Query @myDirective { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @myDirective(value: \"extra\")", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("directive @myDirective(value: String) on OBJECT
+
+type Query @myDirective @myDirective(value: \"extra\") {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testDirectiveDuplicate(): void {
+        $base = Parser::parse("type Query @deprecated { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated(reason: \"test\")", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        // This will fail validation:
+        $this->assertSame("type Query @deprecated @deprecated(reason: \"test\") {
+  foo: Int
 }
 ", Printer::doPrint($extended));
     }
