@@ -177,53 +177,50 @@ class Extender {
         // Common code
         $newNode = self::extendDirectives($node, $extension);
 
-        /**
-         * We have an else just in case.
-         *
-         * @psalm-suppress RedundantConditionGivenDocblockType
-         */
         if($newNode instanceof ScalarTypeDefinitionNode) {
-            // TODO: Better error
-            assert($extension instanceof ScalarTypeExtensionNode);
+            if( ! $extension instanceof ScalarTypeExtensionNode) {
+                throw new MismatchedTypeExtensionException($newNode, $extension);
+            }
 
             // Do nothing, we only add directives to scalars
         }
         elseif($newNode instanceof ObjectTypeDefinitionNode) {
-            // TODO: Better error
-            assert($extension instanceof ObjectTypeExtensionNode);
+            if( ! $extension instanceof ObjectTypeExtensionNode) {
+                throw new MismatchedTypeExtensionException($newNode, $extension);
+            }
 
             $newNode = self::extendObjectType($newNode, $extension);
         }
         elseif($newNode instanceof InterfaceTypeDefinitionNode) {
-            // TODO: Better error
-            assert($extension instanceof InterfaceTypeExtensionNode);
+            if( ! $extension instanceof InterfaceTypeExtensionNode) {
+                throw new MismatchedTypeExtensionException($newNode, $extension);
+            }
 
             $newNode = self::extendObjectType($newNode, $extension);
         }
         elseif($newNode instanceof UnionTypeDefinitionNode) {
-            // TODO: Better error
-            assert($extension instanceof UnionTypeExtensionNode);
+            if( ! $extension instanceof UnionTypeExtensionNode) {
+                throw new MismatchedTypeExtensionException($newNode, $extension);
+            }
 
             $newNode = self::extendUnionType($newNode, $extension);
         }
         elseif($newNode instanceof EnumTypeDefinitionNode) {
-            // TODO: Better error
-            assert($extension instanceof EnumTypeExtensionNode);
+            if( ! $extension instanceof EnumTypeExtensionNode) {
+                throw new MismatchedTypeExtensionException($newNode, $extension);
+            }
 
             $newNode = self::extendEnumType($newNode, $extension);
         }
-        elseif($newNode instanceof InputObjectTypeDefinitionNode) {
-            // TODO: Better error
-            assert($extension instanceof InputObjectTypeExtensionNode);
+        else {
+            // Here $newNode has to be an instance of InputObjectTypeDefinitionNode.
+            // We never get anything besides the above since the Visitor only allows
+            // the standard compliant types.
+            if( ! $extension instanceof InputObjectTypeExtensionNode) {
+                throw new MismatchedTypeExtensionException($newNode, $extension);
+            }
 
             $newNode = self::extendInputObjectType($newNode, $extension);
-        }
-        else {
-            throw new RuntimeException(sprintf(
-                "%s: Unknown schema definition node type %s",
-                __METHOD__,
-                $newNode::class
-            ));
         }
 
         $schemaExtension->setUsedExtension($name);

@@ -7,6 +7,8 @@ namespace GraphQLASTExtender;
 use GraphQL\Error\Error;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\NodeList;
+use GraphQL\Language\AST\NameNode;
+use GraphQL\Language\AST\Node;
 use GraphQL\Language\Parser;
 use GraphQL\Language\Printer;
 use PHPUnit\Framework\TestCase;
@@ -143,6 +145,216 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $this->assertNotSame($base, $extended);
         // This will fail validation:
         $this->assertSame("type Query @deprecated @deprecated(reason: \"test\") {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension InputObjectTypeExtension for ObjectTypeDefinition type 'Query'.");
+        $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend input Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension InputObjectTypeExtension for ObjectTypeDefinition type 'Query'.");
+        $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend input Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType2(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InputObjectTypeDefinition type 'Query'.");
+        $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid2(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InputObjectTypeDefinition type 'Query'.");
+        $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType3(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InterfaceTypeDefinition type 'Query'.");
+        $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid3(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InterfaceTypeDefinition type 'Query'.");
+        $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType4(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for UnionTypeDefinition type 'Query'.");
+        $base = Parser::parse("union Query = Foo type Foo { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid4(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for UnionTypeDefinition type 'Query'.");
+        $base = Parser::parse("union Query = Foo type Foo { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType5(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InputObjectTypeDefinition type 'Query'.");
+        $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid5(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InputObjectTypeDefinition type 'Query'.");
+        $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType6(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for ScalarTypeDefinition type 'Query'.");
+        $base = Parser::parse("scalar Query", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid6(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for ScalarTypeDefinition type 'Query'.");
+        $base = Parser::parse("scalar Query", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendType7(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for EnumTypeDefinition type 'Query'.");
+        $base = Parser::parse("enum Query { FOO }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testBadExtendTypeAssumeValid7(): void {
+        $this->expectException(MismatchedTypeExtensionException::class);
+        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for EnumTypeDefinition type 'Query'.");
+        $base = Parser::parse("enum Query { FOO }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
   foo: Int
 }
 ", Printer::doPrint($extended));
