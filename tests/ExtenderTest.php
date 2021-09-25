@@ -109,6 +109,36 @@ class ExtenderText extends TestCase {
 ", Printer::doPrint($extended));
     }
 
+    public function testInterfaceFieldCollision(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Field \"Query.foo\" can only be defined once.");
+        $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend interface Query { foo: String }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query {
+  foo: Int
+  foo: String
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testInterfaceFieldCollisionAssumeValid(): void {
+        $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend interface Query { foo: String }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("interface Query {
+  foo: Int
+  foo: String
+}
+", Printer::doPrint($extended));
+    }
+
     public function testDirective(): void {
         $this->expectException(Error::class);
         $this->expectExceptionMessage("The directive \"myDirective\" can only be used once at this location.");
