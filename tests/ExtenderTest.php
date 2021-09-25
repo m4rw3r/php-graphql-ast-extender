@@ -85,14 +85,7 @@ class ExtenderText extends TestCase {
         $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query { foo: String }", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-  foo: String
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testObjectFieldCollisionAssumeValid(): void {
@@ -115,14 +108,7 @@ class ExtenderText extends TestCase {
         $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend interface Query { foo: String }", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-  foo: String
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testInterfaceFieldCollisionAssumeValid(): void {
@@ -186,28 +172,7 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend input Query @deprecated", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
-    }
-
-    public function testBadExtendTypeAssumeValid(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension InputObjectTypeExtension for ObjectTypeDefinition type 'Query'.");
-        $base = Parser::parse("type Query { foo: Int }", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend input Query @deprecated", [ "noLocation" => true ]);
-
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testBadExtendType2(): void {
@@ -216,28 +181,7 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
-    }
-
-    public function testBadExtendTypeAssumeValid2(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InputObjectTypeDefinition type 'Query'.");
-        $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
-
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testBadExtendType3(): void {
@@ -246,28 +190,7 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
-    }
-
-    public function testBadExtendTypeAssumeValid3(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InterfaceTypeDefinition type 'Query'.");
-        $base = Parser::parse("interface Query { foo: Int }", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
-
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testBadExtendType4(): void {
@@ -276,28 +199,7 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("union Query = Foo type Foo { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
-    }
-
-    public function testBadExtendTypeAssumeValid4(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for UnionTypeDefinition type 'Query'.");
-        $base = Parser::parse("union Query = Foo type Foo { foo: Int }", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
-
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testBadExtendType5(): void {
@@ -306,28 +208,7 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
-    }
-
-    public function testBadExtendTypeAssumeValid5(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for InputObjectTypeDefinition type 'Query'.");
-        $base = Parser::parse("input Query { foo: Int }", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
-
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testBadExtendType6(): void {
@@ -336,28 +217,7 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("scalar Query", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
 
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
-    }
-
-    public function testBadExtendTypeAssumeValid6(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for ScalarTypeDefinition type 'Query'.");
-        $base = Parser::parse("scalar Query", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
-
-        $extended = Extender::extend($base, $extension);
-
-        $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
-}
-", Printer::doPrint($extended));
+        Extender::extend($base, $extension);
     }
 
     public function testBadExtendType7(): void {
@@ -366,26 +226,99 @@ type Query @myDirective @myDirective(value: \"extra\") {
         $base = Parser::parse("enum Query { FOO }", [ "noLocation" => true ]);
         $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
 
+        Extender::extend($base, $extension);
+    }
+
+    public function testExtendObjectInterfaces(): void {
+        $base = Parser::parse("type Query { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query implements A interface A { foo: String }", [ "noLocation" => true ]);
+
         $extended = Extender::extend($base, $extension);
 
         $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
+        $this->assertSame("type Query implements A {
+  foo: String
+}
+
+interface A {
+  foo: String
 }
 ", Printer::doPrint($extended));
     }
 
-    public function testBadExtendTypeAssumeValid7(): void {
-        $this->expectException(MismatchedTypeExtensionException::class);
-        $this->expectExceptionMessage("Mismatched type extension ObjectTypeExtension for EnumTypeDefinition type 'Query'.");
-        $base = Parser::parse("enum Query { FOO }", [ "noLocation" => true ]);
-        $extension = Parser::parse("extend type Query @deprecated", [ "noLocation" => true ]);
+    public function testExtendObjectInterfacesDuplicate(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Type \"Query\" is only allowed to implement the interface \"A\" once.");
+        $base = Parser::parse("type Query implements A { foo: String } interface A { foo: String } ", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query implements A", [ "noLocation" => true ]);
+
+        Extender::extend($base, $extension);
+    }
+
+    public function testExtendObjectInterfacesDuplicateAssumeValid(): void {
+        $base = Parser::parse("type Query implements A { foo: String } interface A { foo: String } ", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend type Query implements A", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("type Query implements A & A {
+  foo: String
+}
+
+interface A {
+  foo: String
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testExtendUnion(): void {
+        $base = Parser::parse("union A = B type B { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend union A = C type C { baz: Int }", [ "noLocation" => true ]);
 
         $extended = Extender::extend($base, $extension);
 
         $this->assertNotSame($base, $extended);
-        $this->assertSame("type Query {
-  foo: Int
+        $this->assertSame("union A = B | C
+
+type B {
+  foo: String
+}
+
+type C {
+  baz: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testExtendUnionDuplicate(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Union \"A\" is only allowed to contain the type \"B\" once.");
+        $base = Parser::parse("union A = B type B { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend union A = B", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("union A = B | B
+
+type B {
+  foo: String
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testExtendUnionDuplicateAssumeValid(): void {
+        $base = Parser::parse("union A = B type B { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend union A = B", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("union A = B | B
+
+type B {
+  foo: String
 }
 ", Printer::doPrint($extended));
     }

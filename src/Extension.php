@@ -82,21 +82,22 @@ class Extension {
         $defs = [];
 
         foreach($this->ast->definitions as $def) {
-            if($def instanceof TypeExtensionNode) {
-                continue;
-            }
-
+            // TypeSystemDefinitionNode
             if($def instanceof SchemaDefinitionNode) {
                 continue;
             }
 
+            // TypeSystemDefinitionNode
             if($def instanceof TypeExtensionNode) {
                 continue;
             }
 
+            // TypeSystemDefinitionNode
+            //   TypeDefinitionNode
+            //   DirectiveDefinitionNode
             // ExecutableDefinitionNode
-            // OperationDefinitionNode
-            // FragmentDefinitionNode
+            //   OperationDefinitionNode
+            //   FragmentDefinitionNode
 
             $defs[] = $def;
         }

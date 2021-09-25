@@ -319,6 +319,8 @@ class Extender {
             $sdlRules = DocumentValidator::sdlRules();
 
             $sdlRules[] = new Rules\UniqueFieldNames();
+            $sdlRules[] = new Rules\UniqueObjectInterfaces();
+            $sdlRules[] = new Rules\UniqueUnionTypes();
 
             $errors = DocumentValidator::validateSDL($newBase, null, $sdlRules);
 
