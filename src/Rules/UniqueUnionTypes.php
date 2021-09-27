@@ -16,12 +16,7 @@ use GraphQL\Validator\ValidationContext;
 use GraphQL\Validator\Rules\ValidationRule;
 use function sprintf;
 
-class UniqueUnionTypes extends ValidationRule
-{
-    public function getVisitor(ValidationContext $context) {
-        return $this->getASTVisitor($context);
-    }
-
+class UniqueUnionTypes extends ValidationRule {
     public function getSDLVisitor(SDLValidationContext $context) {
         return $this->getASTVisitor($context);
     }

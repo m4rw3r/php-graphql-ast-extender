@@ -265,6 +265,7 @@ class Extender {
          * @var DocumentNode
          */
         $base = Visitor::visit($base, [
+            // TODO: SchemaDefinitionNode
             "enter" => [
                 NodeKind::SCALAR_TYPE_DEFINITION => $checkType,
                 NodeKind::OBJECT_TYPE_DEFINITION => $checkType,

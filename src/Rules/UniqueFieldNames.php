@@ -23,17 +23,12 @@ use GraphQL\Validator\Rules\ValidationRule;
 use function array_pop;
 use function sprintf;
 
-class UniqueFieldNames extends ValidationRule
-{
+class UniqueFieldNames extends ValidationRule {
     /** @var array<string, NameNode> */
     private $knownNames = [];
 
     /** @var array<array<string, NameNode>> */
     private $knownNameStack = [];
-
-    public function getVisitor(ValidationContext $context) {
-        return $this->getASTVisitor($context);
-    }
 
     public function getSDLVisitor(SDLValidationContext $context) {
         return $this->getASTVisitor($context);
@@ -82,7 +77,7 @@ class UniqueFieldNames extends ValidationRule
                 $unusedParent,
                 array $unusedPath,
                 array $ancestors
-            ) use ($context) : VisitorOperation {
+            ) use ($context): VisitorOperation {
                 $fieldName = $node->name->value;
                 $ancestorsCount = count($ancestors);
                 $objectNode = $ancestors[$ancestorsCount - 1];

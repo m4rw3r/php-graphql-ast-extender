@@ -20,10 +20,6 @@ use GraphQL\Validator\Rules\ValidationRule;
 use function sprintf;
 
 class UniqueObjectInterfaces extends ValidationRule {
-    public function getVisitor(ValidationContext $context) {
-        return $this->getASTVisitor($context);
-    }
-
     public function getSDLVisitor(SDLValidationContext $context) {
         return $this->getASTVisitor($context);
     }
