@@ -322,4 +322,41 @@ type B {
 }
 ", Printer::doPrint($extended));
     }
+
+    public function testExtendEnum(): void {
+        $base = Parser::parse("enum MyEnum { A }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend enum MyEnum { B }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("enum MyEnum {
+  A
+  B
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testExtendEnumDuplicate(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Enum \"MyEnum\" is only allowed to contain the value \"A\" once.");
+        $base = Parser::parse("enum MyEnum { A }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend enum MyEnum { A }", [ "noLocation" => true ]);
+
+        Extender::extend($base, $extension);
+    }
+
+    public function testExtendEnumDuplicateAssumeValid(): void {
+        $base = Parser::parse("enum MyEnum { A }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend enum MyEnum { A }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("enum MyEnum {
+  A
+  A
+}
+", Printer::doPrint($extended));
+    }
 }
