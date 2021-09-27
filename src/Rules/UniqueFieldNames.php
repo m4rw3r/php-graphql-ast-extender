@@ -10,6 +10,8 @@ use GraphQL\Language\AST\Node;
 use GraphQL\Language\AST\NodeKind;
 use GraphQL\Language\AST\NodeList;
 use GraphQL\Language\AST\ObjectTypeDefinitionNode;
+use GraphQL\Language\AST\InputObjectTypeDefinitionNode;
+use GraphQL\Language\AST\InputValueDefinitionNode;
 use GraphQL\Language\AST\InterfaceTypeDefinitionNode;
 use GraphQL\Language\AST\FieldDefinitionNode;
 use GraphQL\Language\Visitor;
@@ -42,6 +44,15 @@ class UniqueFieldNames extends ValidationRule
         $this->knownNameStack = [];
 
         return [
+            NodeKind::INPUT_OBJECT_TYPE_DEFINITION => [
+                'enter' => function () : void {
+                    $this->knownNameStack[] = $this->knownNames;
+                    $this->knownNames = [];
+                },
+                'leave' => function () : void {
+                    $this->knownNames = array_pop($this->knownNameStack);
+                },
+            ],
             NodeKind::OBJECT_TYPE_DEFINITION => [
                 'enter' => function () : void {
                     $this->knownNameStack[] = $this->knownNames;
@@ -80,6 +91,37 @@ class UniqueFieldNames extends ValidationRule
                     $objectNode instanceof ObjectTypeDefinitionNode ||
                     $objectNode instanceof InterfaceTypeDefinitionNode
                 );
+
+                if (isset($this->knownNames[$fieldName])) {
+                    $parentName = $objectNode->name->value;
+
+                    $context->reportError(new Error(
+                        self::duplicateInputFieldMessage($parentName, $fieldName),
+                        [$objectNode, $node]
+                    ));
+                } else {
+                    $this->knownNames[$fieldName] = $node->name;
+                }
+
+                return Visitor::skipNode();
+            },
+            NodeKind::INPUT_VALUE_DEFINITION =>
+            /**
+             * @param string|int $unusedKey
+             * @param Node|NodeList $unusedParent
+             */
+            function(
+                InputValueDefinitionNode $node,
+                $unusedKey,
+                $unusedParent,
+                array $unusedPath,
+                array $ancestors
+            ) use ($context): VisitorOperation {
+                $fieldName = $node->name->value;
+                $ancestorsCount = count($ancestors);
+                $objectNode = $ancestors[$ancestorsCount - 1];
+
+                assert($objectNode instanceof InputObjectTypeDefinitionNode);
 
                 if (isset($this->knownNames[$fieldName])) {
                     $parentName = $objectNode->name->value;

@@ -359,4 +359,48 @@ type B {
 }
 ", Printer::doPrint($extended));
     }
+
+    public function testExtendInputObject(): void {
+        $base = Parser::parse("input MyInput { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend input MyInput { bar: Int }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("input MyInput {
+  foo: String
+  bar: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testExtendInputObjectDuplicateField(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Field \"MyInput.foo\" can only be defined once.");
+        $base = Parser::parse("input MyInput { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend input MyInput { foo: Int }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("input MyInput {
+  foo: String
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testExtendInputObjectDuplicateFieldAssumeValid(): void {
+        $base = Parser::parse("input MyInput { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend input MyInput { foo: Int }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("input MyInput {
+  foo: String
+  foo: Int
+}
+", Printer::doPrint($extended));
+    }
 }
