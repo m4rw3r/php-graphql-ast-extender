@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace GraphQLASTExtender\Rules;
 
 use GraphQL\Error\Error;
-use GraphQL\Language\AST\NameNode;
 use GraphQL\Language\AST\Node;
 use GraphQL\Language\AST\NodeKind;
 use GraphQL\Language\AST\NodeList;
@@ -18,7 +17,6 @@ use GraphQL\Validator\ASTValidationContext;
 use GraphQL\Validator\SDLValidationContext;
 use GraphQL\Validator\ValidationContext;
 use GraphQL\Validator\Rules\ValidationRule;
-use function array_pop;
 use function sprintf;
 
 class UniqueObjectInterfaces extends ValidationRule {

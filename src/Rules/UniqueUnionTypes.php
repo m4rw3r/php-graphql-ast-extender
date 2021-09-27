@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace GraphQLASTExtender\Rules;
 
 use GraphQL\Error\Error;
-use GraphQL\Language\AST\NameNode;
 use GraphQL\Language\AST\Node;
 use GraphQL\Language\AST\NodeKind;
-use GraphQL\Language\AST\NodeList;
 use GraphQL\Language\AST\UnionTypeDefinitionNode;
 use GraphQL\Language\Visitor;
 use GraphQL\Language\VisitorOperation;
@@ -16,7 +14,6 @@ use GraphQL\Validator\ASTValidationContext;
 use GraphQL\Validator\SDLValidationContext;
 use GraphQL\Validator\ValidationContext;
 use GraphQL\Validator\Rules\ValidationRule;
-use function array_pop;
 use function sprintf;
 
 class UniqueUnionTypes extends ValidationRule
@@ -42,7 +39,7 @@ class UniqueUnionTypes extends ValidationRule
                 $parentName = $node->name->value;
 
                 $context->reportError(new Error(
-                    self::duplicateInterfaceMessage($parentName, $typeName),
+                    self::duplicateUnionTypeMessage($parentName, $typeName),
                     [$node, $type]
                 ));
             }
@@ -62,7 +59,7 @@ class UniqueUnionTypes extends ValidationRule
         ];
     }
 
-    public static function duplicateInterfaceMessage(
+    public static function duplicateUnionTypeMessage(
         string $parentName,
         string $fieldName
     ): string {
