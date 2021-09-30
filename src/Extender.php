@@ -6,9 +6,11 @@ namespace GraphQLASTExtender;
 
 use GraphQL\Error\Error;
 use GraphQL\Language\AST\DirectiveDefinitionNode;
+use GraphQL\Language\AST\DefinitionNode;
 use GraphQL\Language\AST\DocumentNode;
 use GraphQL\Language\AST\EnumTypeDefinitionNode;
 use GraphQL\Language\AST\EnumTypeExtensionNode;
+use GraphQL\Language\AST\FragmentDefinitionNode;
 use GraphQL\Language\AST\InputObjectTypeDefinitionNode;
 use GraphQL\Language\AST\InputObjectTypeExtensionNode;
 use GraphQL\Language\AST\InterfaceTypeDefinitionNode;
@@ -17,9 +19,11 @@ use GraphQL\Language\AST\Node;
 use GraphQL\Language\AST\NodeKind;
 use GraphQL\Language\AST\ObjectTypeDefinitionNode;
 use GraphQL\Language\AST\ObjectTypeExtensionNode;
+use GraphQL\Language\AST\OperationDefinitionNode;
 use GraphQL\Language\AST\ScalarTypeDefinitionNode;
 use GraphQL\Language\AST\ScalarTypeExtensionNode;
 use GraphQL\Language\AST\SchemaDefinitionNode;
+use GraphQL\Language\AST\SchemaTypeExtensionNode;
 use GraphQL\Language\AST\TypeDefinitionNode;
 use GraphQL\Language\AST\TypeExtensionNode;
 use GraphQL\Language\AST\UnionTypeDefinitionNode;
@@ -29,20 +33,23 @@ use GraphQL\Validator\DocumentValidator;
 use GraphQL\Validator\Rules\ValidationRule;
 
 /**
- * @psalm-type TypeExtensionImpls ScalarTypeExtensionNode | ObjectTypeExtensionNode | InterfaceTypeExtensionNode | UnionTypeExtensionNode | EnumTypeExtensionNode | InputObjectTypeExtensionNode
+ * @psalm-type TypeExtensionImpls SchemaTypeExtensionNode | ScalarTypeExtensionNode | ObjectTypeExtensionNode | InterfaceTypeExtensionNode | UnionTypeExtensionNode | EnumTypeExtensionNode | InputObjectTypeExtensionNode
  * @psalm-type TypeDefinitionImpls ScalarTypeDefinitionNode | ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode | UnionTypeDefinitionNode | EnumTypeDefinitionNode | InputObjectTypeDefinitionNode
  * @psalm-type TypeSystemDefinitionImpls SchemaDefinitionNode | TypeDefinitionImpls | TypeExtensionImpls | DirectiveDefinitionNode
+ * @psalm-type ExecutableDefinitionImpls OperationDefinitionNode | FragmentDefinitionNode
+ * @psalm-type DefinitionImpls ExecutableDefinitionImpls | TypeSystemDefinitionImpls
  */
 class Extender {
+    // Note: Generics do not yet work for static methods
     /**
-     * @param TypeDefinitionImpls $base
+     * @param TypeDefinitionImpls|SchemaDefinitionNode $base
      * @param TypeExtensionImpls $extension
-     * @return TypeDefinitionImpls
+     * @return TypeDefinitionImpls|SchemaDefinitionNode
      */
     private static function extendDirectives(
-        TypeDefinitionNode $base,
+        DefinitionNode $base,
         TypeExtensionNode $extension
-    ): TypeDefinitionNode {
+    ): DefinitionNode {
         if($extension->directives->count() > 0) {
             $base = clone $base;
 
@@ -170,6 +177,9 @@ class Extender {
         }
 
         // Common code
+        /**
+         * @var TypeDefinitionImpls
+         */
         $newNode = self::extendDirectives($node, $extension);
 
         if($newNode instanceof ScalarTypeDefinitionNode) {
@@ -229,6 +239,13 @@ class Extender {
     ): DocumentNode {
         $schemaExtension = new Extension($extension);
 
+        $checkSchema = static function()
+            use($schemaExtension): void {
+                if($schemaExtension->getSchema()) {
+                    throw new DuplicateSchemaException();
+                }
+            };
+
         $checkType = static function(Node $node)
             use($schemaExtension): void {
                 /**
@@ -237,6 +254,31 @@ class Extender {
                 if($schemaExtension->hasType($node->name->value)) {
                     throw new DuplicateTypeException($node->name->value);
                 }
+            };
+
+        $extendSchema = static function(SchemaDefinitionNode $node)
+            use($schemaExtension): ?SchemaDefinitionNode {
+                $extension = $schemaExtension->getSchemaExtension();
+
+                if($extension) {
+                    $schemaExtension->setUsedSchemaExtension(true);
+
+                    /**
+                     * @var SchemaDefinitionNode
+                     */
+                    $newNode = self::extendDirectives($node, $extension);
+
+                    if($extension->operationTypes->count() > 0) {
+                        $newNode = clone $newNode;
+
+                        // Duplicates are verified after using a GraphQL validation pass
+                        $newNode->operationTypes = $newNode->operationTypes->merge($extension->operationTypes);
+                    }
+
+                    return $newNode !== $node ? $newNode : null;
+                }
+
+                return null;
             };
 
         $extendType = static function(TypeDefinitionNode $node)
@@ -267,6 +309,7 @@ class Extender {
         $base = Visitor::visit($base, [
             // TODO: SchemaDefinitionNode
             "enter" => [
+                NodeKind::SCHEMA_DEFINITION => $checkSchema,
                 NodeKind::SCALAR_TYPE_DEFINITION => $checkType,
                 NodeKind::OBJECT_TYPE_DEFINITION => $checkType,
                 NodeKind::INTERFACE_TYPE_DEFINITION => $checkType,
@@ -276,6 +319,7 @@ class Extender {
             ],
             "leave" => [
                 NodeKind::DOCUMENT => $extendDocument,
+                NodeKind::SCHEMA_DEFINITION => $extendSchema,
                 NodeKind::SCALAR_TYPE_DEFINITION => $extendType,
                 NodeKind::OBJECT_TYPE_DEFINITION => $extendType,
                 NodeKind::INTERFACE_TYPE_DEFINITION => $extendType,
@@ -287,6 +331,10 @@ class Extender {
 
         if($schemaExtension->hasUnusedExtensions()) {
             throw new MissingBaseTypeException($schemaExtension->getUnusedExtensionNames());
+        }
+
+        if($schemaExtension->hasUnusedSchemaExtension()) {
+            throw new MissingBaseSchemaException();
         }
 
         return $base;
@@ -314,10 +362,11 @@ class Extender {
              */
             $sdlRules = DocumentValidator::sdlRules();
 
+            $sdlRules[] = new Rules\UniqueEnumValues();
             $sdlRules[] = new Rules\UniqueFieldNames();
             $sdlRules[] = new Rules\UniqueObjectInterfaces();
+            $sdlRules[] = new Rules\UniqueSchemaOperationTypes();
             $sdlRules[] = new Rules\UniqueUnionTypes();
-            $sdlRules[] = new Rules\UniqueEnumValues();
 
             $errors = DocumentValidator::validateSDL($newBase, null, $sdlRules);
 

@@ -7,21 +7,27 @@ namespace GraphQLASTExtender;
 use Generator;
 use GraphQL\Language\AST\DefinitionNode;
 use GraphQL\Language\AST\DocumentNode;
+use GraphQL\Language\AST\DirectiveDefinitionNode;
+use GraphQL\Language\AST\FragmentDefinitionNode;
 use GraphQL\Language\AST\Node;
 use GraphQL\Language\AST\NodeKind;
+use GraphQL\Language\AST\OperationDefinitionNode;
 use GraphQL\Language\AST\SchemaDefinitionNode;
+use GraphQL\Language\AST\SchemaTypeExtensionNode;
 use GraphQL\Language\AST\TypeDefinitionNode;
 use GraphQL\Language\AST\TypeExtensionNode;
 use GraphQL\Language\Visitor;
-use RuntimeException;
 
 /**
  * @psalm-import-type TypeDefinitionImpls from Extender
  * @psalm-import-type TypeExtensionImpls from Extender
+ * @psalm-import-type DefinitionImpls from Extender
  */
 class Extension {
     private DocumentNode $ast;
     private ?SchemaDefinitionNode $schemaDefinition = null;
+    private ?SchemaTypeExtensionNode $schemaExtension = null;
+    private bool $usedSchemaExtension = false;
     /**
      * @var Array<string, TypeDefinitionImpls>
      */
@@ -38,6 +44,9 @@ class Extension {
     public function __construct(DocumentNode $ast) {
         $this->ast = $ast;
 
+        /**
+         * @var DefinitionImpls $def
+         */
         foreach($ast->definitions as $def) {
             // TODO: Do we just ignore these?
             // ExecutableDefinitionNode
@@ -49,6 +58,11 @@ class Extension {
 
                 $this->schemaDefinition = $def;
             }
+            elseif($def instanceof SchemaTypeExtensionNode) {
+                assert($this->schemaDefinition === null);
+
+                $this->schemaExtension = $def;
+            }
             elseif($def instanceof TypeDefinitionNode) {
                 /**
                  * @var TypeDefinitionImpls $def
@@ -59,13 +73,16 @@ class Extension {
                 /**
                  * @var TypeExtensionImpls $def
                  */
+                assert( ! $def instanceof SchemaTypeExtensionNode);
                 $this->typeExtensions[$def->name->value] = $def;
             }
+            elseif($def instanceof DirectiveDefinitionNode) {
+                continue;
+            }
             else {
-                throw new RuntimeException(sprintf(
-                    "%s: Unknown schema definition node type %s",
-                    __METHOD__,
-                    $def::class
+                throw new Exception(sprintf(
+                    "Unexpected schema definition node: %s.",
+                    $def->kind
                 ));
             }
         }
@@ -81,24 +98,29 @@ class Extension {
     public function getAdditionalDefinitions(): array {
         $defs = [];
 
+        /**
+         * @var DefinitionImpls $def
+         */
         foreach($this->ast->definitions as $def) {
             // TypeSystemDefinitionNode
-            if($def instanceof SchemaDefinitionNode) {
-                continue;
-            }
+            //   SchemaDefinitionNode
 
-            // TypeSystemDefinitionNode
+            //   TypeSystemDefinitionNode
             if($def instanceof TypeExtensionNode) {
                 continue;
             }
 
+            // ExecutableDefinitionNode
+            // We have checked this already, so it should still be true
+            assert(
+                ! $def instanceof OperationDefinitionNode &&
+                ! $def instanceof FragmentDefinitionNode
+            );
+
             // TypeSystemDefinitionNode
+            //   SchemaDefinitionNode
             //   TypeDefinitionNode
             //   DirectiveDefinitionNode
-            // ExecutableDefinitionNode
-            //   OperationDefinitionNode
-            //   FragmentDefinitionNode
-
             $defs[] = $def;
         }
 
@@ -114,6 +136,22 @@ class Extension {
 
     public function setUsedExtension(string $name): void {
         $this->usedExtensions[] = $name;
+    }
+
+    public function getSchema(): ?SchemaDefinitionNode {
+        return $this->schemaDefinition;
+    }
+
+    public function getSchemaExtension(): ?SchemaTypeExtensionNode {
+        return $this->schemaExtension;
+    }
+
+    public function setUsedSchemaExtension(bool $value): void {
+        $this->usedSchemaExtension = $value;
+    }
+
+    public function hasUnusedSchemaExtension(): bool {
+        return $this->schemaExtension !== null && ! $this->usedSchemaExtension;
     }
 
     public function hasUnusedExtensions(): bool {

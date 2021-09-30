@@ -403,4 +403,92 @@ type B {
 }
 ", Printer::doPrint($extended));
     }
+
+    public function testExtendWithOperation(): void {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage("Unexpected schema definition node: OperationDefinition.");
+        $base = Parser::parse("input MyInput { foo: String }", [ "noLocation" => true ]);
+        $extension = Parser::parse("query MyQuery { foo }", [ "noLocation" => true ]);
+
+        Extender::extend($base, $extension);
+    }
+
+    public function testSchema(): void {
+        $base = new DocumentNode([
+            "definitions" => new NodeList([]),
+        ]);
+        $extension = Parser::parse("schema { mutation: Mutations }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension, ["assumeValid" => true]);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("schema {
+  mutation: Mutations
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testSchemaExtension(): void {
+        $base = Parser::parse("schema { query: Query }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend schema { mutation: Mutations }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("schema {
+  query: Query
+  mutation: Mutations
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testSchemaExtensionDirectives(): void {
+        $base = Parser::parse("directive @myDirective on SCHEMA schema @myDirective { query: Query }", [ "noLocation" => true ]);
+        $extension = Parser::parse("directive @foo on SCHEMA extend schema @foo { mutation: Mutations }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("directive @myDirective on SCHEMA
+
+schema @myDirective @foo {
+  query: Query
+  mutation: Mutations
+}
+
+directive @foo on SCHEMA
+", Printer::doPrint($extended));
+    }
+
+    public function testSchemaExtensionMissing(): void {
+        $this->expectException(MissingBaseSchemaException::class);
+        $base = Parser::parse("type Query { query: string }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend schema { mutation: Mutations }", [ "noLocation" => true ]);
+
+        Extender::extend($base, $extension);
+    }
+
+    public function testSchemaExtensionDuplicate(): void {
+        $this->expectException(DuplicateSchemaException::class);
+        $base = Parser::parse("schema { query: Query }", [ "noLocation" => true ]);
+        $extension = Parser::parse("schema { mutation: Mutations }", [ "noLocation" => true ]);
+
+        $extended = Extender::extend($base, $extension);
+
+        $this->assertNotSame($base, $extended);
+        $this->assertSame("schema {
+  query: Query
+  mutation: Mutations
+}
+", Printer::doPrint($extended));
+    }
+
+    public function testSchemaExtensionDuplicateOperation(): void {
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage("Schema operation type \"query\" is only allowed to be defined once.");
+        $base = Parser::parse("schema { query: Query }", [ "noLocation" => true ]);
+        $extension = Parser::parse("extend schema { query: MyQuery }", [ "noLocation" => true ]);
+
+        Extender::extend($base, $extension);
+    }
 }
